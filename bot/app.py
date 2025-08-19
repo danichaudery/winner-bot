@@ -10,6 +10,7 @@ from .utils.security import verify_api_key_dependency
 from .utils.db import init_db, get_user_status, get_admin_metrics
 from .utils.signals import SignalsService
 from .utils.content import get_contact, get_terms, get_privacy
+from .utils.auth import send_login_otp, verify_login_otp
 
 
 load_dotenv()
@@ -84,4 +85,18 @@ async def terms():
 @app.get("/privacy")
 async def privacy():
     return get_privacy()
+
+
+@app.post("/auth/request-otp")
+async def request_otp(email: str):
+    send_login_otp(email)
+    return {"ok": True}
+
+
+@app.post("/auth/verify-otp")
+async def verify_otp(email: str, code: str):
+    ok = verify_login_otp(email, code)
+    if not ok:
+        raise HTTPException(status_code=400, detail="Invalid or expired OTP")
+    return {"ok": True}
 
