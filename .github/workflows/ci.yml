@@ -38,6 +38,17 @@ jobs:
           name: backend
           path: backend.zip
 
+      - name: Build Docker image
+        run: |
+          docker build -t winner-bot:ci .
+          docker save winner-bot:ci -o winner-bot-image.tar
+
+      - name: Upload Docker image artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-image
+          path: winner-bot-image.tar
+
   # Flutter build can be enabled later when mobile app is implemented fully
   # mobile:
   #   runs-on: ubuntu-latest
