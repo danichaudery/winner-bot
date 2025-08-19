@@ -11,6 +11,7 @@ from .utils.db import init_db, get_user_status, get_admin_metrics
 from .utils.signals import SignalsService
 from .utils.content import get_contact, get_terms, get_privacy
 from .utils.auth import send_login_otp, verify_login_otp
+from .utils.payments import process_incoming_payments
 
 
 load_dotenv()
@@ -54,6 +55,11 @@ signals_service = SignalsService()
 async def on_startup() -> None:
     init_db()
     await signals_service.start_background_scheduler()
+    # Kick off first payment check (non-blocking)
+    try:
+        await process_incoming_payments()
+    except Exception:
+        pass
 
 
 @app.on_event("shutdown")
