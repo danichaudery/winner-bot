@@ -12,6 +12,8 @@ from .utils.signals import SignalsService
 from .utils.content import get_contact, get_terms, get_privacy
 from .utils.auth import send_login_otp, verify_login_otp
 from .utils.payments import process_incoming_payments
+from apscheduler.schedulers.asyncio import AsyncIOScheduler
+from apscheduler.triggers.interval import IntervalTrigger
 
 
 load_dotenv()
@@ -49,6 +51,7 @@ class CandlesResponse(BaseModel):
 
 
 signals_service = SignalsService()
+payments_scheduler: AsyncIOScheduler | None = None
 
 
 @app.on_event("startup")
@@ -60,11 +63,21 @@ async def on_startup() -> None:
         await process_incoming_payments()
     except Exception:
         pass
+    # Schedule recurring TRC20 payment polling
+    global payments_scheduler
+    if payments_scheduler is None:
+        payments_scheduler = AsyncIOScheduler()
+        payments_scheduler.add_job(process_incoming_payments, IntervalTrigger(seconds=60))
+        payments_scheduler.start()
 
 
 @app.on_event("shutdown")
 async def on_shutdown() -> None:
     await signals_service.shutdown_background_scheduler()
+    global payments_scheduler
+    if payments_scheduler:
+        payments_scheduler.shutdown(wait=False)
+        payments_scheduler = None
 
 
 @app.get("/signals/latest", response_model=SignalsLatestResponse)
