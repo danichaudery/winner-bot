@@ -1,0 +1,18 @@
+{
+  "pairs": [
+    "EURUSD", "GBPUSD", "USDJPY", "AUDUSD", "USDCAD",
+    "BTCUSD", "ETHUSD", "XAUUSD"
+  ],
+  "timeframes": ["1m", "5m", "15m"],
+  "strategies": {
+    "rsi_extreme": {"enabled": true, "oversold": 30, "overbought": 70},
+    "macd_cross": {"enabled": true},
+    "ema_crossover": {"enabled": true, "fast": 9, "slow": 21},
+    "bollinger_band": {"enabled": true, "period": 20, "stddev": 2},
+    "volume_spike": {"enabled": true, "multiplier": 2.0},
+    "pattern_recognition": {"enabled": true},
+    "ai_stability_detector": {"enabled": true}
+  },
+  "high_confirmation_min": 2
+}
+
