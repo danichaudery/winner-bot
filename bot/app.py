@@ -1,9 +1,10 @@
-from fastapi import FastAPI, Depends, HTTPException, Header
+from fastapi import FastAPI, Depends, HTTPException, Header, WebSocket
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from typing import Optional, Dict, Any, List
 import os
 from dotenv import load_dotenv
+from fastapi.staticfiles import StaticFiles
 
 # Local imports
 from .utils.security import verify_api_key_dependency
@@ -14,6 +15,7 @@ from .utils.auth import send_login_otp, verify_login_otp
 from .utils.payments import process_incoming_payments
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
+from .utils.ws import WebSocketManager
 
 
 load_dotenv()
@@ -27,6 +29,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"]
 )
+
+# Serve dashboard static files
+app.mount("/dashboard", StaticFiles(directory="dashboard/user_dashboard", html=True), name="dashboard")
 
 
 class SignalsLatestResponse(BaseModel):
@@ -52,6 +57,7 @@ class CandlesResponse(BaseModel):
 
 signals_service = SignalsService()
 payments_scheduler: AsyncIOScheduler | None = None
+ws_manager = WebSocketManager()
 
 
 @app.on_event("startup")
@@ -142,4 +148,36 @@ async def candles(pair: str, timeframe: str = "1m", limit: int = 200, api_key: s
         "close": data.get("close", []).tolist() if hasattr(data.get("close"), "tolist") else data.get("close", []),
         "volume": data.get("volume", []).tolist() if hasattr(data.get("volume"), "tolist") else data.get("volume", []),
     }
+
+
+@app.websocket("/ws/candles")
+async def ws_candles(websocket: WebSocket, pair: str, timeframe: str = "1m"):
+    topic = f"candles:{pair}:{timeframe}"
+    await ws_manager.connect(websocket, topic)
+    try:
+        while True:
+            await websocket.receive_text()  # keepalive pings from client
+            data = await signals_service.get_candles(pair=pair, timeframe=timeframe, limit=200)
+            await ws_manager.broadcast(topic, {"type": "candles", "pair": pair, "timeframe": timeframe, "data": data})
+            await asyncio.sleep(1)
+    except Exception:
+        pass
+    finally:
+        await ws_manager.disconnect(websocket, topic)
+
+
+@app.websocket("/ws/signals")
+async def ws_signals(websocket: WebSocket, timeframe: str = "1m"):
+    topic = f"signals:{timeframe}"
+    await ws_manager.connect(websocket, topic)
+    try:
+        while True:
+            await websocket.receive_text()  # keepalive
+            latest = await signals_service.get_latest_signals(timeframe=timeframe)
+            await ws_manager.broadcast(topic, {"type": "signals", "timeframe": timeframe, "data": latest})
+            await asyncio.sleep(1)
+    except Exception:
+        pass
+    finally:
+        await ws_manager.disconnect(websocket, topic)
 
