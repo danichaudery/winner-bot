@@ -1,0 +1,10 @@
+.env
+bot/data/
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+*.zip
+frontend/build/
+node_modules/
+.DS_Store
