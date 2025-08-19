@@ -21,6 +21,7 @@ class SignalsService:
             self.config = json.load(f)
         self.scheduler: AsyncIOScheduler | None = None
         self.latest: Dict[str, Dict[str, Any]] = {}
+        self.latest_candles: Dict[str, Dict[str, Dict[str, Any]]] = {}
 
     async def start_background_scheduler(self) -> None:
         if self.scheduler is not None:
@@ -39,8 +40,10 @@ class SignalsService:
     async def _run_all_pairs(self, timeframe: str) -> None:
         pairs: List[str] = self.config.get("pairs", [])
         results: Dict[str, Any] = {}
+        candles_by_pair: Dict[str, Any] = {}
         for pair in pairs:
             candles = get_candles(pair, timeframe, limit=200)
+            candles_by_pair[pair] = candles
             signals = self._evaluate_strategies(candles)
             direction, score = self._combine_signals(signals)
             results[pair] = {"direction": direction, "score": score, "details": signals}
@@ -49,6 +52,7 @@ class SignalsService:
                 session.add(SignalLog(pair=pair, timeframe=timeframe, direction=direction, score=score))
                 session.commit()
         self.latest[timeframe] = results
+        self.latest_candles[timeframe] = candles_by_pair
 
     def _evaluate_strategies(self, candles: Dict[str, np.ndarray]) -> Dict[str, Any]:
         out: Dict[str, Any] = {}
@@ -95,4 +99,15 @@ class SignalsService:
                     "created_at": r.created_at.isoformat()
                 } for r in rows
             ]
+
+    async def get_candles(self, pair: str, timeframe: str, limit: int = 200) -> Dict[str, Any]:
+        tf_data = self.latest_candles.get(timeframe, {})
+        data = tf_data.get(pair)
+        if not data:
+            data = get_candles(pair, timeframe, limit=limit)
+        # Trim to limit
+        out = {}
+        for k, v in data.items():
+            out[k] = v[-limit:]
+        return out
 

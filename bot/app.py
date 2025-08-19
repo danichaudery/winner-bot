@@ -37,6 +37,16 @@ class SignalsHistoryQuery(BaseModel):
     limit: int = 100
 
 
+class CandlesResponse(BaseModel):
+    pair: str
+    timeframe: str
+    open: list[float]
+    high: list[float]
+    low: list[float]
+    close: list[float]
+    volume: list[float]
+
+
 signals_service = SignalsService()
 
 
@@ -99,4 +109,18 @@ async def verify_otp(email: str, code: str):
     if not ok:
         raise HTTPException(status_code=400, detail="Invalid or expired OTP")
     return {"ok": True}
+
+
+@app.get("/candles", response_model=CandlesResponse)
+async def candles(pair: str, timeframe: str = "1m", limit: int = 200, api_key: str = Depends(verify_api_key_dependency)):
+    data = await signals_service.get_candles(pair=pair, timeframe=timeframe, limit=limit)
+    return {
+        "pair": pair,
+        "timeframe": timeframe,
+        "open": data.get("open", []).tolist() if hasattr(data.get("open"), "tolist") else data.get("open", []),
+        "high": data.get("high", []).tolist() if hasattr(data.get("high"), "tolist") else data.get("high", []),
+        "low": data.get("low", []).tolist() if hasattr(data.get("low"), "tolist") else data.get("low", []),
+        "close": data.get("close", []).tolist() if hasattr(data.get("close"), "tolist") else data.get("close", []),
+        "volume": data.get("volume", []).tolist() if hasattr(data.get("volume"), "tolist") else data.get("volume", []),
+    }
 
