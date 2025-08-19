@@ -1,21 +1,24 @@
-from typing import List, Dict, Any
-import pandas as pd
+from typing import Dict, Any
+import numpy as np
 
 
-def compute_rsi(series: pd.Series, period: int = 14) -> pd.Series:
-    delta = series.diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
-    rs = gain / (loss.replace(0, 1e-9))
-    rsi = 100 - (100 / (1 + rs))
+def compute_rsi(series: np.ndarray, period: int = 14) -> np.ndarray:
+    delta = np.diff(series, prepend=series[0])
+    gain = np.where(delta > 0, delta, 0.0)
+    loss = np.where(delta < 0, -delta, 0.0)
+    gain_ma = np.convolve(gain, np.ones(period)/period, mode='same')
+    loss_ma = np.convolve(loss, np.ones(period)/period, mode='same')
+    rs = gain_ma / (loss_ma + 1e-9)
+    rsi = 100.0 - (100.0 / (1.0 + rs))
     return rsi
 
 
-def rsi_extreme_signal(candles: pd.DataFrame, oversold: int = 30, overbought: int = 70) -> Dict[str, Any]:
-    if len(candles) < 20:
+def rsi_extreme_signal(candles: Dict[str, np.ndarray], oversold: int = 30, overbought: int = 70) -> Dict[str, Any]:
+    close = candles["close"]
+    if close.shape[0] < 20:
         return {"direction": "HOLD", "score": 0, "confidence": 0.0}
-    rsi = compute_rsi(candles["close"], period=14)
-    last_rsi = float(rsi.iloc[-1])
+    rsi = compute_rsi(close, period=14)
+    last_rsi = float(rsi[-1])
     if last_rsi <= oversold:
         return {"direction": "BUY", "score": 1, "confidence": (oversold - last_rsi) / oversold}
     if last_rsi >= overbought:

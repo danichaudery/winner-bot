@@ -5,7 +5,7 @@ import json
 from typing import Dict, Any, List
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 from apscheduler.triggers.interval import IntervalTrigger
-import pandas as pd
+import numpy as np
 
 from ..strategies import STRATEGY_FUNCTIONS
 from .market import get_candles
@@ -50,7 +50,7 @@ class SignalsService:
                 session.commit()
         self.latest[timeframe] = results
 
-    def _evaluate_strategies(self, candles: pd.DataFrame) -> Dict[str, Any]:
+    def _evaluate_strategies(self, candles: Dict[str, np.ndarray]) -> Dict[str, Any]:
         out: Dict[str, Any] = {}
         strategies_cfg = self.config.get("strategies", {})
         for name, fn in STRATEGY_FUNCTIONS.items():
