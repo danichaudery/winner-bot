@@ -3,10 +3,11 @@ from __future__ import annotations
 from typing import List, Dict
 import random
 import numpy as np
+import os
+from ..providers.quotex_client import QuotexClient
 
 
-def get_candles(pair: str, timeframe: str, limit: int = 200) -> Dict[str, np.ndarray]:
-    # Placeholder: generate synthetic candle data
+def _synthetic_candles(pair: str, timeframe: str, limit: int = 200) -> Dict[str, np.ndarray]:
     random.seed(f"{pair}-{timeframe}")
     prices = [100.0]
     for _ in range(limit - 1):
@@ -23,4 +24,14 @@ def get_candles(pair: str, timeframe: str, limit: int = 200) -> Dict[str, np.nda
         "close": prices,
         "volume": volumes,
     }
+
+
+def get_candles(pair: str, timeframe: str, limit: int = 200) -> Dict[str, np.ndarray]:
+    # Prefer Quotex if credentials are provided and client returns data
+    client = QuotexClient()
+    if client.is_configured() and client.login():
+        data = client.get_candles(pair, timeframe, limit)
+        if data and isinstance(data, dict) and "close" in data:
+            return data
+    return _synthetic_candles(pair, timeframe, limit)
 

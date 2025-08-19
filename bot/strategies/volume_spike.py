@@ -1,13 +1,13 @@
 from typing import Dict, Any
-import pandas as pd
+import numpy as np
 
 
-def volume_spike_signal(candles: pd.DataFrame, multiplier: float = 2.0) -> Dict[str, Any]:
-    if "volume" not in candles.columns or len(candles) < 30:
+def volume_spike_signal(candles: Dict[str, np.ndarray], multiplier: float = 2.0) -> Dict[str, Any]:
+    vol = candles.get("volume")
+    if vol is None or vol.shape[0] < 30:
         return {"direction": "HOLD", "score": 0, "confidence": 0.0}
-    vol = candles["volume"]
-    avg = vol.rolling(window=20).mean()
-    last, last_avg = float(vol.iloc[-1]), float(avg.iloc[-1])
+    last = float(vol[-1])
+    last_avg = float(np.mean(vol[-20:]))
     spike = last_avg > 0 and (last / last_avg) >= multiplier
     if spike:
         # Direction unknown based on volume alone

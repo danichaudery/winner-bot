@@ -1,18 +1,17 @@
 from typing import Dict, Any
-import pandas as pd
+import numpy as np
 
 
-def bollinger_band_signal(candles: pd.DataFrame, period: int = 20, stddev: int = 2) -> Dict[str, Any]:
-    if len(candles) < period + 1:
-        return {"direction": "HOLD", "score": 0, "confidence": 0.0}
+def bollinger_band_signal(candles: Dict[str, np.ndarray], period: int = 20, stddev: int = 2) -> Dict[str, Any]:
     close = candles["close"]
-    ma = close.rolling(window=period).mean()
-    sd = close.rolling(window=period).std(ddof=0)
-    upper = ma + stddev * sd
-    lower = ma - stddev * sd
-    last_close = float(close.iloc[-1])
-    last_upper = float(upper.iloc[-1])
-    last_lower = float(lower.iloc[-1])
+    if close.shape[0] < period + 1:
+        return {"direction": "HOLD", "score": 0, "confidence": 0.0}
+    window = close[-period:]
+    mean = float(np.mean(window))
+    sd = float(np.std(window))
+    last_close = float(close[-1])
+    last_upper = mean + stddev * sd
+    last_lower = mean - stddev * sd
     if last_close <= last_lower:
         return {"direction": "BUY", "score": 1, "confidence": min((last_lower - last_close) / (abs(last_lower) + 1e-6), 1.0)}
     if last_close >= last_upper:
