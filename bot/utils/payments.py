@@ -66,9 +66,9 @@ async def process_incoming_payments() -> None:
                 amount = 0.0
             pay = Payment(txid=txid, from_address=from_address, to_address=to_address, amount=amount, confirmed=True)
             session.add(pay)
-            # Auto-unblock: extend subscription 30 days for monthly, or set far future for lifetime once we have plan amounts
-            # Heuristic: amount >= 150 -> lifetime, elif >= 15 -> monthly
-            plan = "lifetime" if amount >= 149 else ("monthly" if amount >= 14 else None)
+            # Auto-unblock: extend subscription 30 days for monthly, or set far future for lifetime
+            # Heuristic: amount >= 80 -> lifetime, elif >= 25 -> monthly
+            plan = "lifetime" if amount >= 80 else ("monthly" if amount >= 25 else None)
             if plan:
                 # Assign to earliest trial user as placeholder. In production, include memo or unique amount tags.
                 user = session.query(User).order_by(User.id.asc()).first()
